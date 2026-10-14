@@ -1,0 +1,81 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>CRM</title><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#1a73e8">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--tx:#1f2430;--m:#6b7280;--pri:#1a73e8;--bad:#d93025;--bd:#e3e5ea}
+@media(prefers-color-scheme:dark){:root{--bg:#14161a;--card:#1e2127;--tx:#e8eaed;--m:#9aa0a6;--pri:#8ab4f8;--bad:#f28b82;--bd:#2c3038}}
+*{box-sizing:border-box}body{margin:0;font:15px system-ui,sans-serif;background:var(--bg);color:var(--tx)}
+[hidden]{display:none!important}
+#app{display:grid;grid-template-columns:190px 1fr;min-height:100vh}
+nav{background:var(--card);border-right:1px solid var(--bd);padding:12px;display:flex;flex-direction:column;gap:4px}
+nav button{text-align:left;background:none;border:0;color:var(--tx);padding:10px 12px;border-radius:8px;font-size:15px}
+nav button.on{background:var(--pri);color:#fff}
+.col{min-width:0}header{display:flex;gap:8px;align-items:center;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--bd)}
+header input{flex:1}#who{color:var(--m);font-size:13px}
+main{padding:16px;max-width:900px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:12px;margin:8px 0}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}.m{color:var(--m);font-size:13px}
+.b{display:inline-block;background:var(--bad);color:#fff;border-radius:6px;padding:2px 8px;font-size:12px;margin-top:6px}
+.f{display:grid;gap:8px;margin-top:10px}h3{margin:18px 0 4px;font-size:15px}
+input,select,button{font:inherit;padding:9px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--tx)}
+button{cursor:pointer}.card button,.f button{background:var(--pri);color:#fff;border:0}
+#login{display:grid;place-items:center;min-height:100vh}.c{text-align:center;padding:28px;min-width:280px}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:76px;background:#222;color:#fff;padding:10px 16px;border-radius:8px;max-width:90%}
+@media(max-width:760px){#app{display:block;padding-bottom:64px}
+nav{position:fixed;bottom:0;left:0;right:0;flex-direction:row;justify-content:space-around;border:0;border-top:1px solid var(--bd);padding:6px 6px calc(6px + env(safe-area-inset-bottom));z-index:5}
+nav button{text-align:center;padding:8px 14px}header{padding-top:calc(10px + env(safe-area-inset-top))}#who{display:none}}
+</style></head><body>
+<div id="login" hidden><div class="card c"><h2>CRM</h2><p class="m">Войдите рабочим Google-аккаунтом</p>
+<div id="gbtn" style="display:flex;justify-content:center"></div><p id="lerr" class="m"></p></div></div>
+<div id="app" hidden>
+<nav><button data-p="day" onclick="go('day')">📅 Мой день</button><button data-p="projects" onclick="go('projects')">📋 Проекты</button><button data-p="clients" onclick="go('clients')">👥 Клиенты</button></nav>
+<div class="col"><header><input id="q" placeholder="Поиск" oninput="draw()"><span id="who"></span><button onclick="logout()">Выйти</button></header><main id="main"></main></div></div>
+<div id="toast" hidden></div>
+<script>
+const API_URL='ВСТАВЬТЕ_URL_РАЗВЁРТЫВАНИЯ_(/exec)', CLIENT_ID='ВСТАВЬТЕ_CLIENT_ID.apps.googleusercontent.com';
+let tok=localStorage.getItem('tok'),D=null,page='day';
+const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fd=s=>s?String(s).slice(0,10).split('-').reverse().join('.'):'—';
+const BAD=['Нет следующего шага','Просрочена задача','Этап просрочен'];
+async function api(fn,...args){
+  const r=await fetch(API_URL,{method:'POST',body:JSON.stringify({token:tok,fn,args})}),j=await r.json();
+  if(!j.ok){if(j.error==='AUTH')logout();throw new Error(j.error)}return j.data}
+function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,4000)}
+const run=async f=>{try{await f()}catch(e){if(e.message!=='AUTH')toast(e.message)}};
+function login(){$('#app').hidden=true;$('#login').hidden=false;
+  google.accounts.id.initialize({client_id:CLIENT_ID,auto_select:false,callback:r=>{tok=r.credential;localStorage.setItem('tok',tok);start()}});
+  google.accounts.id.renderButton($('#gbtn'),{theme:'outline',size:'large'})}
+function logout(){tok=null;localStorage.removeItem('tok');if(window.google)google.accounts.id.disableAutoSelect();login()}
+async function start(){try{D=await api('boot');$('#login').hidden=true;$('#app').hidden=false;draw()}
+  catch(e){if(e.message!=='AUTH'){tok=null;localStorage.removeItem('tok');login();$('#lerr').textContent=e.message}}}
+const reload=async()=>{D=await api('boot');draw()};
+function go(p){page=p;$('#q').value='';draw()}
+function draw(){
+  $('#who').textContent=D.user.name+' · '+D.user.role;
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.p===page));
+  const q=$('#q').value.toLowerCase();$('#main').innerHTML={day:vDay,projects:()=>vProj(q),clients:()=>vCli(q)}[page]()}
+function vDay(){
+  const T=D.tasks.slice().sort((a,b)=>String(a['Срок']||'9').localeCompare(String(b['Срок']||'9')));
+  const g=t=>!t['Срок']?2:t['Срок']<D.today?0:t['Срок']===D.today?1:2,N=['🔴 Просрочено','🟠 Сегодня','🗓 Далее'];
+  let h='<details class="card"><summary>➕ Новая задача</summary><div class="f"><input id="nt" placeholder="Что сделать"><select id="na">'+
+   D.staff.map(s=>'<option'+(s===D.user.name?' selected':'')+'>'+esc(s)+'</option>').join('')+'</select><input id="nd" type="date" value="'+D.today+'"><select id="np">'+
+   D.lists.priorities.map(p=>'<option>'+esc(p)+'</option>').join('')+'</select><button onclick="addT()">Создать</button></div></details>';
+  [0,1,2].forEach(i=>{const L=T.filter(t=>g(t)===i);if(!L.length)return;
+   h+='<h3>'+N[i]+' · '+L.length+'</h3>'+L.map(t=>'<div class="card row"><div><b>'+esc(t['Задача'])+'</b><div class="m">до '+fd(t['Срок'])+' · '+esc(t['Исполнитель'])+(t['ID объекта']?' · '+esc(t['ID объекта']):'')+'</div></div><button onclick="done(\''+esc(t['ID задачи'])+'\')">✓</button></div>').join('')});
+  return h+(T.length?'':'<p class="m">Открытых задач нет 🎉</p>')}
+function vProj(q){
+  return D.projects.filter(p=>!q||(p['Название проекта']+p['Клиент']+p['ID проекта']).toLowerCase().includes(q)).map(p=>
+   '<div class="card"><b>'+esc(p['Название проекта'])+'</b><div class="m">'+esc(p['Клиент'])+' · '+esc(p['ID проекта'])+' · '+esc(p['Менеджер'])+'</div>'+
+   '<div class="f"><select onchange="stage(\''+esc(p['ID проекта'])+'\',this.value)">'+D.lists.stages.map(s=>'<option'+(s===p['Этап']?' selected':'')+'>'+esc(s)+'</option>').join('')+'</select></div>'+
+   (BAD.includes(p['Контроль'])?'<span class="b">'+esc(p['Контроль'])+'</span>':'')+'</div>').join('')||'<p class="m">Нет проектов</p>'}
+function vCli(q){
+  return D.clients.filter(c=>!q||(c['Контрагент (кратко)']+c['УНП']+c['ID клиента']).toLowerCase().includes(q)).map(c=>
+   '<div class="card"><b>'+esc(c['Контрагент (кратко)'])+'</b><div class="m">'+esc(c['ID клиента'])+' · '+esc(c['Статус'])+' · '+esc(c['Менеджер'])+'</div><div class="m">'+
+   (c['Телефон']?'<a href="tel:'+esc(c['Телефон'])+'">'+esc(c['Телефон'])+'</a> ':'')+(c['E-mail']?'<a href="mailto:'+esc(c['E-mail'])+'">'+esc(c['E-mail'])+'</a>':'')+'</div></div>').join('')||'<p class="m">Нет клиентов</p>'}
+const addT=()=>run(async()=>{await api('addTask',{'Задача':$('#nt').value,'Исполнитель':$('#na').value,'Срок':$('#nd').value,'Приоритет':$('#np').value,'Тип задачи':'Другое',objType:'',objId:''});toast('Задача создана');await reload()});
+const done=id=>{const r=prompt('Результат (обязательно):');if(r!==null)run(async()=>{await api('completeTask',id,r);await reload()})};
+const stage=(id,s)=>run(async()=>{await api('setStage',id,s);toast('Этап обновлён');await reload()});
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
+window.addEventListener('load',()=>tok?start():login());
+</script></body></html>
