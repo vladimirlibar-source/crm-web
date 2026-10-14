@@ -33,7 +33,7 @@ nav button{text-align:center;padding:8px 14px}header{padding-top:calc(10px + env
 <div class="col"><header><input id="q" placeholder="Поиск" oninput="draw()"><span id="who"></span><button onclick="logout()">Выйти</button></header><main id="main"></main></div></div>
 <div id="toast" hidden></div>
 <script>
-const API_URL='ВСТАВЬТЕ_URL_РАЗВЁРТЫВАНИЯ_(/exec)', CLIENT_ID='ВСТАВЬТЕ_CLIENT_ID.apps.googleusercontent.com';
+const API_URL='https://script.google.com/macros/s/AKfycbwbOpQBsGbxaKf-67P27foPKMDzO5hdm39Ub3qMXawWtrL15jRaylnrpksaPaLFZSqi/exec', CLIENT_ID='472337429434-db5ek8j030m46qn2m972e78pd01s5vmi.apps.googleusercontent.com';
 let tok=localStorage.getItem('tok'),D=null,page='day';
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fd=s=>s?String(s).slice(0,10).split('-').reverse().join('.'):'—';
