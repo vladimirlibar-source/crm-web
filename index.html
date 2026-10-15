@@ -63,12 +63,12 @@ button,select,input,textarea{outline:0;transition:.15s}input:focus,select:focus,
 <div id="gbtn" style="display:flex;justify-content:center"></div><p id="lerr" class="m"></p></div></div>
 <div id="app" hidden>
 <nav id="nav"></nav>
-<div class="col"><header><input id="q" placeholder="Поиск" oninput="draw()"><span id="who"></span><button onclick="logout()">Выйти</button></header><main id="main"></main></div></div>
+<div class="col"><header><input id="q" placeholder="Поиск" oninput="draw()"><button class="g" onclick="pal()" title="Поиск по всем разделам (Ctrl+K)">🔍</button><span id="who"></span><button onclick="logout()">Выйти</button></header><main id="main"></main></div></div>
 <dialog id="dlg"><div id="dc"></div></dialog>
 <div id="toast" hidden></div>
 <script>
 const API_URL='https://script.google.com/macros/s/AKfycbwbOpQBsGbxaKf-67P27foPKMDzO5hdm39Ub3qMXawWtrL15jRaylnrpksaPaLFZSqi/exec', CLIENT_ID='472337429434-db5ek8j030m46qn2m972e78pd01s5vmi.apps.googleusercontent.com';
-let tok=localStorage.getItem('tok'),D=null,page='home';
+let tok=localStorage.getItem('tok'),D=null,DASH=null,page='home';
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fd=s=>s?String(s).slice(0,10).split('-').reverse().join('.'):'—';
 const BAD=['Нет следующего шага','Просрочена задача','Этап просрочен'];
@@ -80,10 +80,13 @@ const run=async f=>{try{await f()}catch(e){if(e.message!=='AUTH')toast(e.message
 function login(){$('#app').hidden=true;$('#login').hidden=false;
   google.accounts.id.initialize({client_id:CLIENT_ID,auto_select:false,callback:r=>{tok=r.credential;localStorage.setItem('tok',tok);start()}});
   google.accounts.id.renderButton($('#gbtn'),{theme:'outline',size:'large'})}
-function logout(){tok=null;localStorage.removeItem('tok');if(window.google)google.accounts.id.disableAutoSelect();login()}
-async function start(){try{D=await api('boot');L=await api('lists');$('#login').hidden=true;$('#app').hidden=false;draw()}
-  catch(e){if(e.message!=='AUTH'){tok=null;localStorage.removeItem('tok');login();$('#lerr').textContent=e.message}}}
-const reload=async()=>{D=await api('boot');draw()};
+function logout(){tok=null;localStorage.removeItem('tok');localStorage.removeItem('snap');if(window.google)google.accounts.id.disableAutoSelect();login()}
+async function start(){
+  const sn=JSON.parse(localStorage.getItem('snap')||'null');
+  if(sn&&tok){D=sn.b;L=sn.l;DASH=sn.d;$('#login').hidden=true;$('#app').hidden=false;draw()}
+  try{const r=await api('initAll');D=r.b;L=r.l;DASH=r.d;localStorage.setItem('snap',JSON.stringify(r));$('#login').hidden=true;$('#app').hidden=false;draw()}
+  catch(e){if(e.message!=='AUTH'){tok=null;localStorage.removeItem('tok');localStorage.removeItem('snap');login();$('#lerr').textContent=e.message}}}
+const reload=async()=>{const r=await api('initAll');D=r.b;L=r.l;DASH=r.d;localStorage.setItem('snap',JSON.stringify(r));draw()};
 function go(p){page=p;$('#q').value='';draw()}
 async function draw(){
   $('#who').textContent=D.user.name+' · '+D.user.role;
@@ -141,9 +144,9 @@ async function vEnt(k,q){const e=E[k],R=await rows(k);
   (BAD.includes(r['Контроль'])?'<span class="b">'+esc(r['Контроль'])+'</span>':'')+'</div>'}).join('')||'<p class="m">Пока пусто. Нажмите «Добавить».</p>')}
 async function openF(k,id){const e=E[k];await Promise.all(P(e.f+(e.c?';'+e.c:'')).filter(f=>f.t==='r').map(f=>rows(f.a)));
  const r=id?(C[k]||[]).find(x=>x[e.id]===id):null,F=P(!id&&e.c?e.c:e.f);
- $('#dc').innerHTML='<h3 style="margin-top:0">'+esc(e.n)+(id?' · '+esc(id):'')+'</h3><div class="f">'+F.map(f=>'<label>'+esc(f.l)+inp(f,r?r[f.k]:'')+'</label>').join('')+'</div>'+
+ $('#dc').innerHTML='<h3 style="margin-top:0">'+esc(e.n)+(id?' · '+esc(id):'')+'</h3><div id="rel"></div><div class="f">'+F.map(f=>'<label>'+esc(f.l)+inp(f,r?r[f.k]:'')+'</label>').join('')+'</div>'+
  '<div class="bar" style="margin-top:14px"><button class="g" onclick="dlg.close()">Отмена</button>'+(id?'<button class="g" onclick="arch(\''+k+'\',\''+id+'\')">В архив</button>':'')+'<button onclick="save(\''+k+'\','+(id?'\''+id+'\'':'null')+')">Сохранить</button></div>';
- dlg.showModal()}
+ dlg.showModal();if(id&&(k==='clients'||k==='projects'))relLoad(k,id)}
 function collect(){const o={};document.querySelectorAll('#dc [data-k]').forEach(el=>{let v=el.value;if(el.dataset.t==='n')v=v===''?'':Number(v);o[el.dataset.k]=v});return o}
 const after=async m=>{dlg.close();Object.keys(C).forEach(x=>delete C[x]);toast(m);await reload()};
 const save=(k,id)=>run(async()=>{const e=E[k],o=collect();let r;
@@ -155,7 +158,7 @@ const arch=(k,id)=>{if(confirm('Убрать запись в архив?'))run(a
 const act=(k,id,v)=>run(async()=>{await api(E[k].act.fn,id,v);await after('Обновлено')});
 const btn=(k,id)=>run(async()=>{await api(E[k].btn.fn,id);await after('Готово')});
 
-async function vHome(){const d=await api('dashboard'),k=d.kpi,hr=new Date().getHours(),nm=(D.user.name.split(' ')[1]||D.user.name);
+async function vHome(){const d=DASH||await api('dashboard'),k=d.kpi,hr=new Date().getHours(),nm=(D.user.name.split(' ')[1]||D.user.name);
  const K=(i,l,v,p,c)=>'<div class="kpi '+(c||'')+'" onclick="go(\''+p+'\')"><span>'+i+'</span><b>'+v+'</b><small>'+l+'</small></div>',mx=Math.max(1,...d.funnel.map(x=>x[1]));
  const ch=n=>n<0?'<span class="chip bad">просрочено '+(-n)+' дн.</span>':n===0?'<span class="chip wn">сегодня</span>':'<span class="chip">через '+n+' дн.</span>';
  return'<h2 class="hi">'+(hr<6?'Доброй ночи':hr<12?'Доброе утро':hr<18?'Добрый день':'Добрый вечер')+', '+esc(nm)+' 👋</h2><div class="kp">'+
@@ -164,6 +167,16 @@ async function vHome(){const d=await api('dashboard'),k=d.kpi,hr=new Date().getH
  '<div class="card"><b>🔴 Просроченные задачи</b>'+(d.overdue.map(t=>'<div class="li"><div>'+esc(t.task)+'<div class="m">'+esc(t.who)+(t.obj?' · '+esc(t.obj):'')+'</div></div>'+ch(-Math.round((new Date(D.today)-new Date(t.due))/864e5))+'</div>').join('')||'<p class="m">Просрочек нет ✅</p>')+'</div>'+
  '<div class="card"><b>💳 Ближайшие оплаты</b>'+(d.pays.map(p=>'<div class="li"><div>'+esc(p.client)+'<div class="m">'+esc(p.order)+' · '+esc(p.part)+(p.sum?' · '+esc(p.sum):'')+'</div></div>'+ch(p.days)+'</div>').join('')||'<p class="m">Оплат на ближайшие 2 недели нет</p>')+'</div>'+
  '<div class="card"><b>🕘 Последние действия</b>'+(d.recent.map(r=>'<div class="li"><div>'+esc(r.text)+'<div class="m">'+esc(r.who)+' · '+fd(r.when)+'</div></div></div>').join('')||'<p class="m">Пока пусто</p>')+'</div></div>'}
+
+const RL={contacts:'📇 Контакты',contracts:'📄 Договоры',projects:'📋 Проекты',orders:'🛒 Заказы',tasks:'✅ Задачи',journal:'🕘 История'};
+async function relLoad(k,id){try{const r=await api('related',k,id),el=$('#rel');if(!el)return;
+ el.innerHTML=Object.keys(RL).filter(x=>r[x]&&r[x].length).map(x=>'<details class="card" style="padding:8px 12px"><summary><b>'+RL[x]+'</b> <span class="chip">'+r[x].length+'</span></summary>'+r[x].map(i=>'<div class="li"><div>'+esc(i[0])+'<div class="m">'+esc(i[1])+'</div></div></div>').join('')+'</details>').join('')}catch(e){}}
+const PK=['clients','projects','orders','contacts'];
+async function pal(){await Promise.all(PK.map(rows));$('#dc').innerHTML='<input id="pq" placeholder="Поиск по клиентам, проектам, заказам, контактам…" oninput="palr()" style="width:100%"><div id="pr"></div>';dlg.showModal();$('#pq').focus()}
+function palr(){const q=$('#pq').value.toLowerCase(),o=[];if(q.length<2){$('#pr').innerHTML='';return}
+ PK.forEach(k=>(C[k]||[]).forEach(r=>{if(Object.values(r).join(' ').toLowerCase().includes(q))o.push([k,r])}));
+ $('#pr').innerHTML=o.slice(0,12).map(a=>{const k=a[0],r=a[1],id=esc(r[E[k].id]);return'<div class="li" style="cursor:pointer" onclick="dlg.close();page=\''+k+'\';draw();openF(\''+k+'\',\''+id+'\')"><div><b>'+esc(r[E[k].t]||r[E[k].id])+'</b><div class="m">'+E[k].n+' · '+id+'</div></div></div>'}).join('')||'<p class="m">Ничего не найдено</p>'}
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();if(!$('#app').hidden)pal()}});
 function vDay(){
   const T=D.tasks.slice().sort((a,b)=>String(a['Срок']||'9').localeCompare(String(b['Срок']||'9')));
   const g=t=>!t['Срок']?2:t['Срок']<D.today?0:t['Срок']===D.today?1:2,N=['🔴 Просрочено','🟠 Сегодня','🗓 Далее'];
@@ -174,7 +187,7 @@ function vDay(){
    h+='<h3>'+N[i]+' · '+L.length+'</h3>'+L.map(t=>'<div class="card row"><div><b>'+esc(t['Задача'])+'</b><div class="m">до '+fd(t['Срок'])+' · '+esc(t['Исполнитель'])+(t['ID объекта']?' · '+esc(t['ID объекта']):'')+'</div></div><button onclick="done(\''+esc(t['ID задачи'])+'\')">✓</button></div>').join('')});
   return h+(T.length?'':'<p class="m">Открытых задач нет 🎉</p>')}
 const addT=()=>run(async()=>{await api('addTask',{'Задача':$('#nt').value,'Исполнитель':$('#na').value,'Срок':$('#nd').value,'Приоритет':$('#np').value,'Тип задачи':'Другое',objType:'',objId:''});toast('Задача создана');await reload()});
-const done=id=>{const r=prompt('Результат (обязательно):');if(r!==null)run(async()=>{await api('completeTask',id,r);await reload()})};
+const done=id=>{const r=prompt('Результат (обязательно):');if(r===null)return;D.tasks=D.tasks.filter(t=>t['ID задачи']!==id);draw();run(async()=>{try{await api('completeTask',id,r)}catch(e){await reload();throw e}await reload()})};
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
 window.addEventListener('load',()=>tok?start():login());
 </script></body></html>
