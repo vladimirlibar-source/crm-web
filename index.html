@@ -25,7 +25,7 @@ button{cursor:pointer}.card button,.f button{background:var(--pri);color:#fff;bo
 dialog{border:1px solid var(--bd);border-radius:12px;background:var(--card);color:var(--tx);width:min(480px,94vw);max-height:90vh;padding:16px}
 dialog::backdrop{background:#0008}.f label{font-size:12px;color:var(--m);display:grid;gap:3px}.bar{display:flex;gap:8px;justify-content:space-between;align-items:center}
 .bar button{background:var(--pri);color:#fff;border:0}.card.cl{cursor:pointer}.g{background:none!important;color:var(--tx)!important;border:1px solid var(--bd)!important}
-nav{overflow:auto}
+nav{overflow:auto}.bar{flex-wrap:wrap}
 @media(max-width:760px){#app{display:block;padding-bottom:64px}
 nav{position:fixed;bottom:0;left:0;right:0;flex-direction:row;justify-content:space-around;border:0;border-top:1px solid var(--bd);padding:6px 6px calc(6px + env(safe-area-inset-bottom));z-index:5}
 nav button{text-align:center;padding:8px 12px;white-space:nowrap;flex:none}header{padding-top:calc(10px + env(safe-area-inset-top))}#who{display:none}}
@@ -68,7 +68,7 @@ button,select,input,textarea{outline:0;transition:.15s}input:focus,select:focus,
 <div id="toast" hidden></div>
 <script>
 const API_URL='https://script.google.com/macros/s/AKfycbwbOpQBsGbxaKf-67P27foPKMDzO5hdm39Ub3qMXawWtrL15jRaylnrpksaPaLFZSqi/exec', CLIENT_ID='472337429434-db5ek8j030m46qn2m972e78pd01s5vmi.apps.googleusercontent.com';
-let tok=localStorage.getItem('tok'),D=null,DASH=null,page='home';
+let tok=localStorage.getItem('sess'),D=null,DASH=null,ALLF=false,page='home';
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fd=s=>s?String(s).slice(0,10).split('-').reverse().join('.'):'—';
 const BAD=['Нет следующего шага','Просрочена задача','Этап просрочен'];
@@ -78,15 +78,16 @@ async function api(fn,...args){
 function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,4000)}
 const run=async f=>{try{await f()}catch(e){if(e.message!=='AUTH')toast(e.message)}};
 function login(){$('#app').hidden=true;$('#login').hidden=false;
-  google.accounts.id.initialize({client_id:CLIENT_ID,auto_select:false,callback:r=>{tok=r.credential;localStorage.setItem('tok',tok);start()}});
+  google.accounts.id.initialize({client_id:CLIENT_ID,auto_select:false,callback:r=>gLogin(r.credential)});
   google.accounts.id.renderButton($('#gbtn'),{theme:'outline',size:'large'})}
-function logout(){tok=null;localStorage.removeItem('tok');localStorage.removeItem('snap');if(window.google)google.accounts.id.disableAutoSelect();login()}
+async function gLogin(c){try{const r=await fetch(API_URL,{method:'POST',body:JSON.stringify({fn:'login',gtoken:c})}),j=await r.json();if(!j.ok)throw new Error(j.error);tok=j.data.sess;localStorage.setItem('sess',tok);start()}catch(e){$('#lerr').textContent=e.message}}
+function logout(){if(tok)fetch(API_URL,{method:'POST',body:JSON.stringify({token:tok,fn:'logout'})}).catch(()=>{});tok=null;localStorage.removeItem('sess');localStorage.removeItem('tok');localStorage.removeItem('snap');if(window.google)google.accounts.id.disableAutoSelect();login()}
 async function start(){
   const sn=JSON.parse(localStorage.getItem('snap')||'null');
-  if(sn&&tok){D=sn.b;L=sn.l;DASH=sn.d;$('#login').hidden=true;$('#app').hidden=false;draw()}
-  try{const r=await api('initAll');D=r.b;L=r.l;DASH=r.d;localStorage.setItem('snap',JSON.stringify(r));$('#login').hidden=true;$('#app').hidden=false;draw()}
-  catch(e){if(e.message!=='AUTH'){tok=null;localStorage.removeItem('tok');localStorage.removeItem('snap');login();$('#lerr').textContent=e.message}}}
-const reload=async()=>{const r=await api('initAll');D=r.b;L=r.l;DASH=r.d;localStorage.setItem('snap',JSON.stringify(r));draw()};
+  if(sn&&tok){D=sn.b;L=sn.l;DASH=sn.d;ALLF=sn.a;$('#login').hidden=true;$('#app').hidden=false;draw()}
+  try{const r=await api('initAll');D=r.b;L=r.l;DASH=r.d;ALLF=r.a;localStorage.setItem('snap',JSON.stringify(r));$('#login').hidden=true;$('#app').hidden=false;draw()}
+  catch(e){if(e.message!=='AUTH'){tok=null;localStorage.removeItem('sess');localStorage.removeItem('snap');login();$('#lerr').textContent=e.message}}}
+const reload=async()=>{const r=await api('initAll');D=r.b;L=r.l;DASH=r.d;ALLF=r.a;localStorage.setItem('snap',JSON.stringify(r));draw()};
 function go(p){page=p;$('#q').value='';draw()}
 async function draw(){
   $('#who').textContent=D.user.name+' · '+D.user.role;
@@ -106,10 +107,12 @@ contracts:{n:'📄 Договоры',id:'ID договора',t:'Номер',s:[
  f:'ID клиента:r:clients;Номер;Дата:d;Тип;Статус:s:Статус договора;Действует до:d;Ссылка на файл;Примечание:m'},
 projects:{n:'📋 Проекты',id:'ID проекта',t:'Название проекта',s:['Клиент','Менеджер','Контроль'],act:{k:'Этап',fn:'setStage',l:'Этап воронки'},
  f:'ID клиента:r:clients;Название проекта;ID контакта:r:contacts:ID клиента;Менеджер:@;Дата завершения:d;Причина отказа;Примечание:m'},
-orders:{n:'🛒 Заказы',id:'ID заказа',t:'ID заказа',s:['Клиент','Поставщик','Менеджер','Сумма продажи'],add:'orderNew',act:{k:'Статус',fn:'setOrderStatus',l:'Статус заказа'},btn:{fn:'confirmPrepay',l:'💳 Предоплата получена',no:'Предоплата подтверждена (дата)'},
+pitems:{n:'🧩 Позиции проектов',id:'ID позиции',t:'Номенклатура',s:['Проект','ID поставщика','Объём, кг','Образец'],
+ f:'ID проекта:r:projects;ID товара:r:products;ID поставщика:r:suppliers;Объём, кг:n;Образец:s:Статус образца;Документы:s:Документы по позиции;Тестирование:s:Тестирование;Примечание:m'},
+orders:{n:'🛒 Заказы',id:'ID заказа',t:'ID заказа',s:['Клиент','Поставщик','Менеджер','Сумма продажи'],wiz:1,act:{k:'Статус',fn:'setOrderStatus',l:'Статус заказа'},btn:{fn:'confirmPrepay',l:'💳 Предоплата получена',no:'Предоплата подтверждена (дата)'},
  c:'projectId=Проект:r:projects;supplierId=Поставщик:r:suppliers;terms=Условия оплаты:s:Условия оплаты;incoterms=Условия доставки:s:Incoterms',
  f:'ID поставщика:r:suppliers;Менеджер:@;Условия оплаты:s:Условия оплаты;Условия доставки:s:Incoterms;Дата плановая отгрузка:d;Примечание:m'},
-oitems:{n:'🧾 Позиции заказов',id:'ID позиции заказа',t:'Номенклатура',s:['ID заказа','Кол-во, кг','Фасовка','Сумма продажи'],del:1,
+oitems:{n:'🧾 Позиции заказов',id:'ID позиции заказа',t:'Номенклатура',s:['ID заказа','Кол-во, кг','Фасовка','Сумма продажи'],del:1,noadd:1,
  f:'ID заказа:r:orders;Номенклатура;№ спецификации;Кол-во, кг:n;Фасовка;Цена закупки:n;Цена продажи:n;Примечание:m'},
 payments:{n:'📅 Оплаты',id:'ID платежа',t:'Клиент',s:['ID заказа','Часть платежа','Срок оплаты','Состояние'],add:'addPayment',btn:{fn:'markPaid',l:'✓ Оплачено',no:'Оплачено (дата)'},
  c:'orderId=Заказ:r:orders;part=Часть платежа:s:Часть платежа;share=Доля, %:n;due=Срок оплаты:d',f:'Срок оплаты:d;Примечание:m'},
@@ -124,7 +127,7 @@ suppliers:{n:'🏭 Поставщики',id:'ID поставщика',t:'Кра�
 products:{n:'🧴 Товары',id:'ID товара',t:'Наименование',s:['Категория','Артикул','Фасовка'],
  f:'Категория;Подкатегория;Наименование;Артикул;ID поставщика:r:suppliers;Фасовка;Ед. изм.;Код ТН ВЭД;Страна происхождения;Папка (ссылка);Примечание:m'}};
 const P=s=>s.split(';').map(x=>{const m=x.split(':');let k=m[0],l=k;if(k.includes('='))[k,l]=k.split('=');return{k,l,t:m[1]||'t',a:m[2]||'',d:m[3]||''}});
-const C={};let L={};
+const C={};let L={},PRE=null;
 const rows=async k=>C[k]||(C[k]=await api('listRows',k));
 const val=v=>/^\d{4}-\d{2}-\d{2}/.test(v)?fd(v):(v??'');
 function inp(f,v,row){const d='data-k="'+esc(f.k)+'" data-t="'+f.t+'"'+(f.d?' data-dep="'+esc(f.d)+'" data-ent="'+f.a+'"':''),x=v==null?'':v,pv=f.d&&row?row[f.d]:'';
@@ -138,16 +141,16 @@ function inp(f,v,row){const d='data-k="'+esc(f.k)+'" data-t="'+f.t+'"'+(f.d?' da
  return'<select '+d+' onchange="dep(this)"><option value=""></option>'+o.map(a=>'<option value="'+esc(a[0])+'"'+(a[0]===x?' selected':'')+'>'+esc(a[1])+'</option>').join('')+'</select>'}
 async function vEnt(k,q){const e=E[k],R=await rows(k);
  const T=R.filter(r=>!q||Object.values(r).join(' ').toLowerCase().includes(q));
- return'<div class="bar"><h3 style="margin:0">'+e.n+' · '+T.length+'</h3><button onclick="openF(\''+k+'\')">＋ Добавить</button></div>'+
+ return'<div class="bar"><h3 style="margin:0">'+e.n+' · '+T.length+'</h3>'+(e.noadd?'':'<button onclick="'+(e.wiz?'wiz()':'openF(\''+k+'\')')+'">＋ '+(e.wiz?'Заказ из позиций':'Добавить')+'</button>')+'</div>'+
  (T.map(r=>{const id=esc(r[e.id]);
   return'<div class="card cl" onclick="openF(\''+k+'\',\''+id+'\')"><b>'+esc(r[e.t]||r[e.id])+'</b><div class="m">'+esc(r[e.id])+' · '+e.s.map(h=>esc(val(r[h]))).filter(Boolean).join(' · ')+'</div>'+
   (e.act?'<div class="f"><select onclick="event.stopPropagation()" onchange="act(\''+k+'\',\''+id+'\',this.value)">'+(L[e.act.l]||[]).map(s=>'<option'+(s===r[e.act.k]?' selected':'')+'>'+esc(s)+'</option>').join('')+'</select></div>':'')+
   (e.btn&&!r[e.btn.no]?'<div class="f"><button onclick="event.stopPropagation();btn(\''+k+'\',\''+id+'\')">'+e.btn.l+'</button></div>':'')+
   (BAD.includes(r['Контроль'])?'<span class="b">'+esc(r['Контроль'])+'</span>':'')+'</div>'}).join('')||'<p class="m">Пока пусто. Нажмите «Добавить».</p>')}
 async function openF(k,id){const e=E[k];await Promise.all(P(e.f+(e.c?';'+e.c:'')).filter(f=>f.t==='r').map(f=>rows(f.a)));
- const r=id?(C[k]||[]).find(x=>x[e.id]===id):(k==='oitems'&&/^ORD-\d{4}$/i.test($('#q').value.trim())?{'ID заказа':$('#q').value.trim().toUpperCase()}:null),F=P(!id&&e.c?e.c:e.f);
+ const r=id?(C[k]||[]).find(x=>x[e.id]===id):(x=>(PRE=null,x))(PRE),F=P(!id&&e.c?e.c:e.f);
  $('#dc').innerHTML='<h3 style="margin-top:0">'+esc(e.n)+(id?' · '+esc(id):'')+'</h3><div id="rel"></div><div class="f">'+F.map(f=>'<label>'+esc(f.l)+inp(f,r?r[f.k]:'',r)+'</label>').join('')+'</div>'+
- '<div class="bar" style="margin-top:14px"><button class="g" onclick="dlg.close()">Отмена</button>'+(id&&k==='orders'?'<button class="g" onclick="toItems(\''+id+'\')">🧾 Позиции</button>':'')+(id?'<button class="g" onclick="arch(\''+k+'\',\''+id+'\')">'+(e.del?'Удалить':'В архив')+'</button>':'')+'<button onclick="save(\''+k+'\','+(id?'\''+id+'\'':'null')+')">Сохранить</button></div>';
+ '<div class="bar" style="margin-top:14px"><button class="g" onclick="dlg.close()">Отмена</button>'+(id&&k==='orders'?'<button class="g" onclick="toItems(\''+id+'\')">🧾 Позиции</button><button class="g" onclick="wiz(null,\''+id+'\')">➕ Позиции</button>':'')+(id&&k==='projects'?'<button class="g" onclick="wiz(\''+id+'\')">🛒 Заказ</button><button class="g" onclick="addPos(\''+id+'\')">➕ Позиция</button>':'')+(id?'<button class="g" onclick="arch(\''+k+'\',\''+id+'\')">'+(e.del?'Удалить':'В архив')+'</button>':'')+'<button onclick="save(\''+k+'\','+(id?'\''+id+'\'':'null')+')">Сохранить</button></div>';
  dlg.showModal();if(id&&['clients','projects','orders'].includes(k))relLoad(k,id)}
 function collect(){const o={};document.querySelectorAll('#dc [data-k]').forEach(el=>{let v=el.value;if(el.dataset.t==='n')v=v===''?'':Number(v);o[el.dataset.k]=v});return o}
 const after=async m=>{dlg.close();Object.keys(C).forEach(x=>delete C[x]);toast(m);await reload()};
@@ -172,7 +175,7 @@ async function vHome(){const d=DASH||await api('dashboard'),k=d.kpi,hr=new Date(
  '<div class="card"><b>💳 Ближайшие оплаты</b>'+(d.pays.map(p=>'<div class="li"><div>'+esc(p.client)+'<div class="m">'+esc(p.order)+' · '+esc(p.part)+(p.sum?' · '+esc(p.sum):'')+'</div></div>'+ch(p.days)+'</div>').join('')||'<p class="m">Оплат на ближайшие 2 недели нет</p>')+'</div>'+
  '<div class="card"><b>🕘 Последние действия</b>'+(d.recent.map(r=>'<div class="li"><div>'+esc(r.text)+'<div class="m">'+esc(r.who)+' · '+fd(r.when)+'</div></div></div>').join('')||'<p class="m">Пока пусто</p>')+'</div></div>'}
 
-const RL={contacts:'📇 Контакты',contracts:'📄 Договоры',projects:'📋 Проекты',orders:'🛒 Заказы',items:'🧾 Позиции',purchases:'📦 Закупки',tasks:'✅ Задачи',journal:'🕘 История'};
+const RL={contacts:'📇 Контакты',contracts:'📄 Договоры',projects:'📋 Проекты',orders:'🛒 Заказы',positions:'🧩 Позиции проекта',items:'🧾 Позиции',purchases:'📦 Закупки',tasks:'✅ Задачи',journal:'🕘 История'};
 async function relLoad(k,id){try{const r=await api('related',k,id),el=$('#rel');if(!el)return;
  el.innerHTML=Object.keys(RL).filter(x=>r[x]&&r[x].length).map(x=>'<details class="card" style="padding:8px 12px"><summary><b>'+RL[x]+'</b> <span class="chip">'+r[x].length+'</span></summary>'+r[x].map(i=>'<div class="li"><div>'+esc(i[0])+'<div class="m">'+esc(i[1])+'</div></div></div>').join('')+'</details>').join('')}catch(e){}}
 const PK=['clients','projects','orders','contacts'];
@@ -181,6 +184,20 @@ function palr(){const q=$('#pq').value.toLowerCase(),o=[];if(q.length<2){$('#pr'
  PK.forEach(k=>(C[k]||[]).forEach(r=>{if(Object.values(r).join(' ').toLowerCase().includes(q))o.push([k,r])}));
  $('#pr').innerHTML=o.slice(0,12).map(a=>{const k=a[0],r=a[1],id=esc(r[E[k].id]);return'<div class="li" style="cursor:pointer" onclick="dlg.close();page=\''+k+'\';draw();openF(\''+k+'\',\''+id+'\')"><div><b>'+esc(r[E[k].t]||r[E[k].id])+'</b><div class="m">'+E[k].n+' · '+id+'</div></div></div>'}).join('')||'<p class="m">Ничего не найдено</p>'}
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();if(!$('#app').hidden)pal()}});
+const addPos=id=>{dlg.close();PRE={'ID проекта':id};openF('pitems')};
+async function wiz(pid,oid){await Promise.all(['projects','pitems','orders'].map(rows));if(oid)await rows('oitems');
+ const o=oid?C.orders.find(x=>x['ID заказа']===oid):null;if(o)pid=o['ID проекта'];
+ $('#dc').innerHTML='<h3 style="margin-top:0">'+(oid?'➕ Позиции в заказ '+esc(oid):'🛒 Новый заказ из позиций проекта')+'</h3><div class="f">'+
+  (oid?'':'<label>Проект'+inp({k:'projectId',t:'r',a:'projects'},pid||'')+'</label><label>Условия оплаты'+inp({k:'terms',t:'s',a:'Условия оплаты'},'')+'</label><label>Условия доставки'+inp({k:'incoterms',t:'s',a:'Incoterms'},'')+'</label>')+
+  '</div><div id="wp" style="margin-top:8px"></div><div class="bar" style="margin-top:14px"><button class="g" onclick="dlg.close()">Отмена</button><button onclick="wizGo(\''+(oid||'')+'\')">Сформировать</button></div>';
+ $('#dc').onchange=e=>{if(e.target.dataset.k==='projectId')wizPos(e.target.value,'')};dlg.showModal();wizPos(pid,oid||'')}
+function wizPos(pid,oid){const mgr=ALLF,used=oid?(C.oitems||[]).filter(i=>i['ID заказа']===oid).map(i=>i['ID позиции проекта']):[];
+ const P=(C.pitems||[]).filter(p=>p['ID проекта']===pid&&!used.includes(p['ID позиции'])),fl=(f,ph,v,t)=>'<input '+(t||'type=number step=any')+' placeholder="'+ph+'" data-f="'+f+'" value="'+esc(v)+'">';
+ $('#wp').innerHTML=!pid?'<p class="m">Выберите проект.</p>':P.length?P.map(p=>'<div class="card"><label style="display:flex;gap:8px;align-items:center"><input type=checkbox data-w="'+esc(p['ID позиции'])+'" style="width:auto" checked><b>'+esc(p['Номенклатура']||p['ID позиции'])+'</b></label><div class="m">'+esc(p['ID поставщика']||'⚠️ поставщик не указан')+' · в проекте '+esc(p['Объём, кг']||'—')+' кг</div><div class="f" style="grid-template-columns:1fr 1fr">'+fl('q','Кол-во, кг',p['Объём, кг']||'')+fl('pack','Фасовка','','type=text')+(mgr?fl('buy','Цена закупки',''):'')+fl('sell','Цена продажи','')+'</div></div>').join(''):'<p class="m">В проекте нет позиций, которые можно добавить. Сначала добавьте позиции проекта.</p>'}
+function wizGo(oid){const lines=[],gv=k=>{const x=document.querySelector('#dc [data-k="'+k+'"]');return x?x.value:''};
+ document.querySelectorAll('#wp .card').forEach(c=>{const cb=c.querySelector('[data-w]');if(!cb||!cb.checked)return;const g=f=>{const x=c.querySelector('[data-f="'+f+'"]');return x?x.value:''};lines.push({pid:cb.dataset.w,qty:g('q'),pack:g('pack'),buy:g('buy'),sell:g('sell')})});
+ run(async()=>{const r=await api('orderBuild',{orderId:oid,projectId:gv('projectId'),terms:gv('terms'),incoterms:gv('incoterms'),lines});if(r.created)page='orders';
+  await after((r.created?'Заказ '+r.id+' сформирован':'Позиции добавлены в '+r.id)+' ('+r.count+' поз.)'+(r.warnings&&r.warnings.length?' ⚠️ '+r.warnings.map(w=>w.msg).join('; '):''))})}
 function vDay(){
   const T=D.tasks.slice().sort((a,b)=>String(a['Срок']||'9').localeCompare(String(b['Срок']||'9')));
   const g=t=>!t['Срок']?2:t['Срок']<D.today?0:t['Срок']===D.today?1:2,N=['🔴 Просрочено','🟠 Сегодня','🗓 Далее'];
