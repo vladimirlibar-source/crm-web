@@ -105,10 +105,12 @@ contacts:{n:'📇 Контакты',id:'ID контакта',t:'ФИО',s:['Кл
 contracts:{n:'📄 Договоры',id:'ID договора',t:'Номер',s:['Клиент','Тип','Статус'],
  f:'ID клиента:r:clients;Номер;Дата:d;Тип;Статус:s:Статус договора;Действует до:d;Ссылка на файл;Примечание:m'},
 projects:{n:'📋 Проекты',id:'ID проекта',t:'Название проекта',s:['Клиент','Менеджер','Контроль'],act:{k:'Этап',fn:'setStage',l:'Этап воронки'},
- f:'ID клиента:r:clients;Название проекта;ID контакта:r:contacts;Менеджер:@;Дата завершения:d;Причина отказа;Примечание:m'},
-orders:{n:'🛒 Заказы',id:'ID заказа',t:'ID заказа',s:['Клиент','Статус','Менеджер','Сумма продажи'],add:'addOrder',btn:{fn:'confirmPrepay',l:'💳 Предоплата получена',no:'Предоплата подтверждена (дата)'},
- c:'projectId=Проект:r:projects;terms=Условия оплаты:s:Условия оплаты;incoterms=Условия доставки:s:Incoterms;spec=№ спецификации;specDate=Дата спецификации:d',
- f:'Статус:s:Статус заказа;Менеджер:@;Условия оплаты:s:Условия оплаты;Условия доставки:s:Incoterms;Дата плановая отгрузка:d;Примечание:m'},
+ f:'ID клиента:r:clients;Название проекта;ID контакта:r:contacts:ID клиента;Менеджер:@;Дата завершения:d;Причина отказа;Примечание:m'},
+orders:{n:'🛒 Заказы',id:'ID заказа',t:'ID заказа',s:['Клиент','Поставщик','Менеджер','Сумма продажи'],add:'orderNew',act:{k:'Статус',fn:'setOrderStatus',l:'Статус заказа'},btn:{fn:'confirmPrepay',l:'💳 Предоплата получена',no:'Предоплата подтверждена (дата)'},
+ c:'projectId=Проект:r:projects;supplierId=Поставщик:r:suppliers;terms=Условия оплаты:s:Условия оплаты;incoterms=Условия доставки:s:Incoterms',
+ f:'ID поставщика:r:suppliers;Менеджер:@;Условия оплаты:s:Условия оплаты;Условия доставки:s:Incoterms;Дата плановая отгрузка:d;Примечание:m'},
+oitems:{n:'🧾 Позиции заказов',id:'ID позиции заказа',t:'Номенклатура',s:['ID заказа','Кол-во, кг','Фасовка','Сумма продажи'],del:1,
+ f:'ID заказа:r:orders;Номенклатура;№ спецификации;Кол-во, кг:n;Фасовка;Цена закупки:n;Цена продажи:n;Примечание:m'},
 payments:{n:'📅 Оплаты',id:'ID платежа',t:'Клиент',s:['ID заказа','Часть платежа','Срок оплаты','Состояние'],add:'addPayment',btn:{fn:'markPaid',l:'✓ Оплачено',no:'Оплачено (дата)'},
  c:'orderId=Заказ:r:orders;part=Часть платежа:s:Часть платежа;share=Доля, %:n;due=Срок оплаты:d',f:'Срок оплаты:d;Примечание:m'},
 purchases:{n:'📦 Закупки',id:'ID закупки',t:'ID закупки',s:['ID поставщика','Статус','Сумма без НДС'],add:'newPurchase',act:{k:'Статус',fn:'setPurchaseStatus',l:'Статус закупки'},
@@ -121,19 +123,19 @@ suppliers:{n:'🏭 Поставщики',id:'ID поставщика',t:'Кра�
  f:'Наименование;Краткое наименование;Тип;Страна;Контактное лицо;Должность;E-mail;Телефон;WeChat;Сайт;Валюта:s:Валюта;Incoterms:s:Incoterms;Условия оплаты:s:Условия оплаты;MOQ;Примечание:m'},
 products:{n:'🧴 Товары',id:'ID товара',t:'Наименование',s:['Категория','Артикул','Фасовка'],
  f:'Категория;Подкатегория;Наименование;Артикул;ID поставщика:r:suppliers;Фасовка;Ед. изм.;Код ТН ВЭД;Страна происхождения;Папка (ссылка);Примечание:m'}};
-const P=s=>s.split(';').map(x=>{const m=x.split(':');let k=m[0],l=k;if(k.includes('='))[k,l]=k.split('=');return{k,l,t:m[1]||'t',a:m[2]||''}});
+const P=s=>s.split(';').map(x=>{const m=x.split(':');let k=m[0],l=k;if(k.includes('='))[k,l]=k.split('=');return{k,l,t:m[1]||'t',a:m[2]||'',d:m[3]||''}});
 const C={};let L={};
 const rows=async k=>C[k]||(C[k]=await api('listRows',k));
 const val=v=>/^\d{4}-\d{2}-\d{2}/.test(v)?fd(v):(v??'');
-function inp(f,v){const d='data-k="'+esc(f.k)+'" data-t="'+f.t+'"',x=v==null?'':v;
+function inp(f,v,row){const d='data-k="'+esc(f.k)+'" data-t="'+f.t+'"'+(f.d?' data-dep="'+esc(f.d)+'" data-ent="'+f.a+'"':''),x=v==null?'':v,pv=f.d&&row?row[f.d]:'';
  if(f.t==='m')return'<textarea '+d+' rows=3>'+esc(x)+'</textarea>';
  if(f.t==='d')return'<input type=date '+d+' value="'+esc(String(x).slice(0,10))+'">';
  if(f.t==='n')return'<input type=number step=any '+d+' value="'+esc(x)+'">';
  let o=null;if(f.t==='s')o=(L[f.a]||[]).map(a=>[a,a]);if(f.t==='@')o=D.staff.map(a=>[a,a]);
- if(f.t==='r')o=(C[f.a]||[]).map(r=>[r[E[f.a].id],r[E[f.a].t]+' · '+r[E[f.a].id]]);
+ if(f.t==='r')o=(C[f.a]||[]).filter(r=>!pv||r[f.d]===pv).map(r=>[r[E[f.a].id],r[E[f.a].t]+' · '+r[E[f.a].id]]);
  if(!o)return'<input '+d+' value="'+esc(x)+'">';
  if(x&&!o.some(a=>a[0]===x))o.push([x,x]);
- return'<select '+d+'><option value=""></option>'+o.map(a=>'<option value="'+esc(a[0])+'"'+(a[0]===x?' selected':'')+'>'+esc(a[1])+'</option>').join('')+'</select>'}
+ return'<select '+d+' onchange="dep(this)"><option value=""></option>'+o.map(a=>'<option value="'+esc(a[0])+'"'+(a[0]===x?' selected':'')+'>'+esc(a[1])+'</option>').join('')+'</select>'}
 async function vEnt(k,q){const e=E[k],R=await rows(k);
  const T=R.filter(r=>!q||Object.values(r).join(' ').toLowerCase().includes(q));
  return'<div class="bar"><h3 style="margin:0">'+e.n+' · '+T.length+'</h3><button onclick="openF(\''+k+'\')">＋ Добавить</button></div>'+
@@ -143,10 +145,10 @@ async function vEnt(k,q){const e=E[k],R=await rows(k);
   (e.btn&&!r[e.btn.no]?'<div class="f"><button onclick="event.stopPropagation();btn(\''+k+'\',\''+id+'\')">'+e.btn.l+'</button></div>':'')+
   (BAD.includes(r['Контроль'])?'<span class="b">'+esc(r['Контроль'])+'</span>':'')+'</div>'}).join('')||'<p class="m">Пока пусто. Нажмите «Добавить».</p>')}
 async function openF(k,id){const e=E[k];await Promise.all(P(e.f+(e.c?';'+e.c:'')).filter(f=>f.t==='r').map(f=>rows(f.a)));
- const r=id?(C[k]||[]).find(x=>x[e.id]===id):null,F=P(!id&&e.c?e.c:e.f);
- $('#dc').innerHTML='<h3 style="margin-top:0">'+esc(e.n)+(id?' · '+esc(id):'')+'</h3><div id="rel"></div><div class="f">'+F.map(f=>'<label>'+esc(f.l)+inp(f,r?r[f.k]:'')+'</label>').join('')+'</div>'+
- '<div class="bar" style="margin-top:14px"><button class="g" onclick="dlg.close()">Отмена</button>'+(id?'<button class="g" onclick="arch(\''+k+'\',\''+id+'\')">В архив</button>':'')+'<button onclick="save(\''+k+'\','+(id?'\''+id+'\'':'null')+')">Сохранить</button></div>';
- dlg.showModal();if(id&&(k==='clients'||k==='projects'))relLoad(k,id)}
+ const r=id?(C[k]||[]).find(x=>x[e.id]===id):(k==='oitems'&&/^ORD-\d{4}$/i.test($('#q').value.trim())?{'ID заказа':$('#q').value.trim().toUpperCase()}:null),F=P(!id&&e.c?e.c:e.f);
+ $('#dc').innerHTML='<h3 style="margin-top:0">'+esc(e.n)+(id?' · '+esc(id):'')+'</h3><div id="rel"></div><div class="f">'+F.map(f=>'<label>'+esc(f.l)+inp(f,r?r[f.k]:'',r)+'</label>').join('')+'</div>'+
+ '<div class="bar" style="margin-top:14px"><button class="g" onclick="dlg.close()">Отмена</button>'+(id&&k==='orders'?'<button class="g" onclick="toItems(\''+id+'\')">🧾 Позиции</button>':'')+(id?'<button class="g" onclick="arch(\''+k+'\',\''+id+'\')">'+(e.del?'Удалить':'В архив')+'</button>':'')+'<button onclick="save(\''+k+'\','+(id?'\''+id+'\'':'null')+')">Сохранить</button></div>';
+ dlg.showModal();if(id&&['clients','projects','orders'].includes(k))relLoad(k,id)}
 function collect(){const o={};document.querySelectorAll('#dc [data-k]').forEach(el=>{let v=el.value;if(el.dataset.t==='n')v=v===''?'':Number(v);o[el.dataset.k]=v});return o}
 const after=async m=>{dlg.close();Object.keys(C).forEach(x=>delete C[x]);toast(m);await reload()};
 const save=(k,id)=>run(async()=>{const e=E[k],o=collect();let r;
@@ -154,8 +156,10 @@ const save=(k,id)=>run(async()=>{const e=E[k],o=collect();let r;
  if(e.add){if(o.orders)o.orders=String(o.orders).split(/[\s,;]+/).filter(Boolean);r=await api(e.add,o);
   return after(r&&r.warnings&&r.warnings.length?'⚠️ '+r.warnings.map(w=>w.msg).join('; '):'Создано')}
  await api('saveRow',k,o);return after('Создано')});
-const arch=(k,id)=>{if(confirm('Убрать запись в архив?'))run(async()=>{await api('saveRow',k,{[E[k].id]:id,'Архив':'Да'});await after('Архивировано')})};
-const act=(k,id,v)=>run(async()=>{await api(E[k].act.fn,id,v);await after('Обновлено')});
+const arch=(k,id)=>{if(confirm(E[k].del?'Удалить запись?':'Убрать запись в архив?'))run(async()=>{if(E[k].del)await api('delRow',k,id);else await api('saveRow',k,{[E[k].id]:id,'Архив':'Да'});await after(E[k].del?'Удалено':'Архивировано')})};
+const toItems=id=>{dlg.close();go('oitems');$('#q').value=id;draw()};
+function dep(el){document.querySelectorAll('#dc [data-dep]').forEach(c=>{if(c.dataset.dep!==el.dataset.k)return;const a=c.dataset.ent,e=E[a],old=c.value;c.innerHTML='<option value=""></option>'+(C[a]||[]).filter(r=>!el.value||r[c.dataset.dep]===el.value).map(r=>'<option value="'+esc(r[e.id])+'"'+(r[e.id]===old?' selected':'')+'>'+esc(r[e.t]+' · '+r[e.id])+'</option>').join('')})}
+const act=(k,id,v)=>run(async()=>{const r=await api(E[k].act.fn,id,v);await after(r&&r.purchase?(r.existed?'Закупка уже есть: ':'Заказ сформирован. Создана закупка ')+r.purchase+(r.warnings&&r.warnings.length?' ⚠️ '+r.warnings.map(w=>w.msg).join('; '):''):'Обновлено')});
 const btn=(k,id)=>run(async()=>{await api(E[k].btn.fn,id);await after('Готово')});
 
 async function vHome(){const d=DASH||await api('dashboard'),k=d.kpi,hr=new Date().getHours(),nm=(D.user.name.split(' ')[1]||D.user.name);
@@ -168,7 +172,7 @@ async function vHome(){const d=DASH||await api('dashboard'),k=d.kpi,hr=new Date(
  '<div class="card"><b>💳 Ближайшие оплаты</b>'+(d.pays.map(p=>'<div class="li"><div>'+esc(p.client)+'<div class="m">'+esc(p.order)+' · '+esc(p.part)+(p.sum?' · '+esc(p.sum):'')+'</div></div>'+ch(p.days)+'</div>').join('')||'<p class="m">Оплат на ближайшие 2 недели нет</p>')+'</div>'+
  '<div class="card"><b>🕘 Последние действия</b>'+(d.recent.map(r=>'<div class="li"><div>'+esc(r.text)+'<div class="m">'+esc(r.who)+' · '+fd(r.when)+'</div></div></div>').join('')||'<p class="m">Пока пусто</p>')+'</div></div>'}
 
-const RL={contacts:'📇 Контакты',contracts:'📄 Договоры',projects:'📋 Проекты',orders:'🛒 Заказы',tasks:'✅ Задачи',journal:'🕘 История'};
+const RL={contacts:'📇 Контакты',contracts:'📄 Договоры',projects:'📋 Проекты',orders:'🛒 Заказы',items:'🧾 Позиции',purchases:'📦 Закупки',tasks:'✅ Задачи',journal:'🕘 История'};
 async function relLoad(k,id){try{const r=await api('related',k,id),el=$('#rel');if(!el)return;
  el.innerHTML=Object.keys(RL).filter(x=>r[x]&&r[x].length).map(x=>'<details class="card" style="padding:8px 12px"><summary><b>'+RL[x]+'</b> <span class="chip">'+r[x].length+'</span></summary>'+r[x].map(i=>'<div class="li"><div>'+esc(i[0])+'<div class="m">'+esc(i[1])+'</div></div></div>').join('')+'</details>').join('')}catch(e){}}
 const PK=['clients','projects','orders','contacts'];
