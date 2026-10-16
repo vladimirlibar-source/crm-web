@@ -58,6 +58,24 @@ button,select,input,textarea{outline:0;transition:.15s}input:focus,select:focus,
 @keyframes sk{to{background-position:-200% 0}}
 @media(max-width:760px){main{padding:12px}.fn{grid-template-columns:100px 1fr 24px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* --- оформление v3 --- */
+@media(min-width:761px){#app{align-items:start}nav{position:sticky;top:0;height:100vh;align-self:start}}
+.pgt{margin-bottom:8px}.pgt h2{margin:0;font-size:24px;display:flex;gap:10px;align-items:center}
+.pgt .bar{justify-content:flex-end;gap:8px}
+.chip{vertical-align:middle}
+.av{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;color:#fff;font-size:10px;font-weight:700;vertical-align:middle}
+.pj{cursor:pointer;border-left:4px solid var(--pri);padding:14px}.pj:hover{transform:translateY(-2px)}
+.pj .dt{display:none;border-top:1px dashed var(--bd);margin-top:12px;padding-top:12px;cursor:default}.pj.open .dt{display:block}
+.stg{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;margin-top:10px}
+.bar2{height:7px;border-radius:5px;background:var(--bd);overflow:hidden;min-width:60px}
+.bar2 i{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,#34a853,#fbbc04)}.bar2 i.over{background:var(--bad)}
+.m.bad{color:var(--bad);font-weight:600}
+.dg{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px}
+.dg div{background:var(--bg);border-radius:10px;padding:8px 10px;font-size:14px}.dg small{color:var(--m);font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+.empty{text-align:center;padding:44px 10px;color:var(--m)}.empty span{font-size:46px;display:block;margin-bottom:6px}
+.card.cl{border-left:4px solid transparent}.card.cl:hover{border-left-color:var(--pri)}
+dialog{box-shadow:0 20px 60px #0005;animation:in .2s}
 </style></head><body>
 <div id="login" hidden><div class="card c"><h2>CRM</h2><p class="m">Войдите рабочим Google-аккаунтом</p>
 <div id="gbtn" style="display:flex;justify-content:center"></div><p id="lerr" class="m"></p></div></div>
@@ -105,10 +123,13 @@ contacts:{n:'📇 Контакты',id:'ID контакта',t:'ФИО',s:['Кл
  f:'ID клиента:r:clients;ФИО;Должность;Роль:s:Роль контакта;E-mail;Телефон;WeChat;Примечание:m'},
 contracts:{n:'📄 Договоры',id:'ID договора',t:'Номер',s:['Клиент','Тип','Статус'],
  f:'ID клиента:r:clients;Номер;Дата:d;Тип;Статус:s:Статус договора;Действует до:d;Ссылка на файл;Примечание:m'},
-projects:{n:'📋 Проекты',id:'ID проекта',t:'Название проекта',s:['Клиент','Менеджер','Контроль'],act:{k:'Этап',fn:'setStage',l:'Этап воронки'},
- f:'ID клиента:r:clients;Название проекта;ID контакта:r:contacts:ID клиента;Менеджер:@;Дата завершения:d;Причина отказа;Примечание:m'},
-pitems:{n:'🧩 Позиции проектов',id:'ID позиции',t:'Номенклатура',s:['Проект','ID поставщика','Объём, кг','Образец'],
- f:'ID проекта:r:projects;ID товара:r:products;ID поставщика:r:suppliers;Объём, кг:n;Образец:s:Статус образца;Документы:s:Документы по позиции;Тестирование:s:Тестирование;Примечание:m'},
+projects:{n:'📋 Проекты',id:'ID проекта',t:'Название проекта',s:['Клиент','Менеджер','Контроль'],act:{k:'Этап',fn:'setStage',l:'Этап воронки'},pre:['contacts'],
+ f:'ID клиента:r:clients;Название проекта;Средство;ID контакта:r:contacts:ID клиента;Менеджер:@;Дата начала:d;Дата завершения:d;Причина отказа;Примечание:m'},
+pitems:{n:'🧩 Позиции проектов',id:'ID позиции',t:'Наименование образца',s:['Проект','ID поставщика','Образец','Документы','Цены','Тестирование'],imp:1,
+ f:'ID проекта:r:projects;ID поставщика:r:suppliers;Наименование образца;Образец:s:Статус образца;Документы:s:Документы по позиции;Цены:s:Статус цены;Тестирование:s:Тестирование;Примечание:m'},
+prices:{n:'💰 Цены',id:'ID цены',t:'ID позиции',pre:['pitems'],ttl:r=>{const p=(C.pitems||[]).find(x=>x['ID позиции']===r['ID позиции']);return p?PN(p):r['ID позиции']},
+ s:['ID поставщика','Статус','Цена закупки','Цена клиенту','Менеджер'],
+ f:'ID позиции:r:pitems;ID поставщика:r:suppliers;Дата запроса:d;Дата получения:d;Валюта:s:Валюта;Кол-во, кг:n;Цена закупки:n;Цена клиенту:n;Цена действует до:d;Статус:s:Статус цены;Менеджер:@;Примечание:m'},
 orders:{n:'🛒 Заказы',id:'ID заказа',t:'ID заказа',s:['Клиент','Поставщик','Менеджер','Сумма продажи'],wiz:1,act:{k:'Статус',fn:'setOrderStatus',l:'Статус заказа'},btn:{fn:'confirmPrepay',l:'💳 Предоплата получена',no:'Предоплата подтверждена (дата)'},
  c:'projectId=Проект:r:projects;supplierId=Поставщик:r:suppliers;terms=Условия оплаты:s:Условия оплаты;incoterms=Условия доставки:s:Incoterms',
  f:'ID поставщика:r:suppliers;Менеджер:@;Условия оплаты:s:Условия оплаты;Условия доставки:s:Incoterms;Дата плановая отгрузка:d;Примечание:m'},
@@ -135,18 +156,38 @@ function inp(f,v,row){const d='data-k="'+esc(f.k)+'" data-t="'+f.t+'"'+(f.d?' da
  if(f.t==='d')return'<input type=date '+d+' value="'+esc(String(x).slice(0,10))+'">';
  if(f.t==='n')return'<input type=number step=any '+d+' value="'+esc(x)+'">';
  let o=null;if(f.t==='s')o=(L[f.a]||[]).map(a=>[a,a]);if(f.t==='@')o=D.staff.map(a=>[a,a]);
- if(f.t==='r')o=(C[f.a]||[]).filter(r=>!pv||r[f.d]===pv).map(r=>[r[E[f.a].id],r[E[f.a].t]+' · '+r[E[f.a].id]]);
+ if(f.t==='r')o=(C[f.a]||[]).filter(r=>!pv||r[f.d]===pv).map(r=>[r[E[f.a].id],(f.a==='pitems'?PN(r)+(r['Проект']?' ('+r['Проект']+')':''):r[E[f.a].t])+' · '+r[E[f.a].id]]);
  if(!o)return'<input '+d+' value="'+esc(x)+'">';
  if(x&&!o.some(a=>a[0]===x))o.push([x,x]);
  return'<select '+d+' onchange="dep(this)"><option value=""></option>'+o.map(a=>'<option value="'+esc(a[0])+'"'+(a[0]===x?' selected':'')+'>'+esc(a[1])+'</option>').join('')+'</select>'}
-async function vEnt(k,q){const e=E[k],R=await rows(k);
- const T=R.filter(r=>!q||Object.values(r).join(' ').toLowerCase().includes(q));
- return'<div class="bar"><h3 style="margin:0">'+e.n+' · '+T.length+'</h3>'+(e.noadd?'':'<button onclick="'+(e.wiz?'wiz()':'openF(\''+k+'\')')+'">＋ '+(e.wiz?'Заказ из позиций':'Добавить')+'</button>')+'</div>'+
- (T.map(r=>{const id=esc(r[e.id]);
-  return'<div class="card cl" onclick="openF(\''+k+'\',\''+id+'\')"><b>'+esc(r[e.t]||r[e.id])+'</b><div class="m">'+esc(r[e.id])+' · '+e.s.map(h=>esc(val(r[h]))).filter(Boolean).join(' · ')+'</div>'+
+const H=s=>{let h=0;for(const c of String(s||''))h=(h*31+c.charCodeAt(0))%360;return h};
+const CH=s=>s===''||s==null?'':'<span class="chip" style="background:hsl('+H(s)+' 70% 50%/.15);color:hsl('+H(s)+' 65% 42%)">'+esc(s)+'</span>';
+const AV=n=>n?'<span class="av" style="background:hsl('+H(n)+' 60% 48%)" title="'+esc(n)+'">'+esc(String(n).split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase())+'</span>':'';
+const isCh=h=>/Статус|Образец|Документы|Цены|Тестирование|Этап|Контроль|Состояние/.test(h);
+const PN=p=>p['Наименование образца']||p['Номенклатура']||p['ID позиции'];
+async function vEnt(k,q){const e=E[k];await Promise.all([rows(k)].concat((e.pre||[]).map(rows)));
+ const T=C[k].filter(r=>!q||Object.values(r).join(' ').toLowerCase().includes(q));
+ const add=e.noadd?'':'<button onclick="'+(e.wiz?'wiz()':'openF(\''+k+'\')')+'">＋ '+(e.wiz?'Заказ из позиций':'Добавить')+'</button>'+(e.imp?'<button class="g" onclick="imp()">📥 Импорт списком</button>':'');
+ return'<div class="bar pgt"><h2>'+e.n+' <span class="chip">'+T.length+'</span></h2><div class="bar">'+add+'</div></div>'+
+ (T.map(r=>{const id=esc(r[e.id]);if(k==='projects')return pCard(r,id);
+  return'<div class="card cl" onclick="openF(\''+k+'\',\''+id+'\')"><b>'+esc(e.ttl?e.ttl(r):(r[e.t]||r[e.id]))+'</b><div class="m">'+esc(r[e.id])+' · '+e.s.map(h=>r[h]===''||r[h]==null?'':isCh(h)?CH(r[h]):esc(val(r[h]))).filter(Boolean).join(' · ')+'</div>'+
   (e.act?'<div class="f"><select onclick="event.stopPropagation()" onchange="act(\''+k+'\',\''+id+'\',this.value)">'+(L[e.act.l]||[]).map(s=>'<option'+(s===r[e.act.k]?' selected':'')+'>'+esc(s)+'</option>').join('')+'</select></div>':'')+
   (e.btn&&!r[e.btn.no]?'<div class="f"><button onclick="event.stopPropagation();btn(\''+k+'\',\''+id+'\')">'+e.btn.l+'</button></div>':'')+
-  (BAD.includes(r['Контроль'])?'<span class="b">'+esc(r['Контроль'])+'</span>':'')+'</div>'}).join('')||'<p class="m">Пока пусто. Нажмите «Добавить».</p>')}
+  (BAD.includes(r['Контроль'])?'<span class="b">'+esc(r['Контроль'])+'</span>':'')+'</div>'}).join('')||'<div class="empty"><span>🗂️</span>Пока пусто. Нажмите «Добавить».</div>')}
+function pCard(r,id){const ct=(C.contacts||[]).find(c=>c['ID контакта']===r['ID контакта']),st=r['Этап'],
+ nrm=Number(r['Норм. срок этапа, дн.'])||Number((L['Норм. срок этапа, дн.']||[])[(L['Этап воронки']||[]).indexOf(st)])||0,
+ d0=r['Дата входа в этап']?String(r['Дата входа в этап']).slice(0,10):'',d=d0?Math.round((new Date(D.today)-new Date(d0))/864e5):null,over=nrm&&d!=null&&d>nrm,pct=nrm&&d!=null?Math.min(100,Math.round(d/nrm*100)):0;
+ return'<div class="card pj" style="border-left-color:hsl('+H(st)+' 65% 50%)" onclick="pjT(this,\''+id+'\')"><div class="row"><b>'+esc(r['Название проекта'])+'</b><span class="m">'+id+'</span></div>'+
+ '<div class="m">🏢 '+esc(r['Клиент']||'—')+' · 👤 '+esc(ct?ct['ФИО']:'контакт не выбран')+(r['Средство']?' · 🧪 '+esc(r['Средство']):'')+'</div>'+
+ '<div class="m">'+AV(r['Менеджер'])+' '+esc(r['Менеджер']||'—')+' · 📅 Начало: '+fd(r['Дата начала'])+'</div>'+
+ '<div class="f"><select onclick="event.stopPropagation()" onchange="act(\'projects\',\''+id+'\',this.value)">'+(L['Этап воронки']||[]).map(s=>'<option'+(s===st?' selected':'')+'>'+esc(s)+'</option>').join('')+'</select></div>'+
+ '<div class="stg"><span class="m">Этап с '+fd(d0)+' · норма '+(nrm||'—')+' дн.</span><div class="bar2"><i class="'+(over?'over':'')+'" style="width:'+pct+'%"></i></div><span class="m'+(over?' bad':'')+'">'+(d==null?'':d+' дн.'+(over?' · просрочен':''))+'</span></div>'+
+ (BAD.includes(r['Контроль'])?'<span class="b">'+esc(r['Контроль'])+'</span>':'')+'<div class="dt" onclick="event.stopPropagation()"></div></div>'}
+async function pjT(el,id){el.classList.toggle('open');const d=el.querySelector('.dt');if(!el.classList.contains('open')||d.dataset.l)return;d.dataset.l=1;d.innerHTML='<div class="sk"></div>';
+ try{const r=C.projects.find(x=>x['ID проекта']===id),rel=await api('related','projects',id);
+  d.innerHTML='<div class="dg">'+Object.keys(r).filter(h=>h[0]!=='_'&&h!=='Архив'&&r[h]!==''&&r[h]!=null).map(h=>'<div><small>'+esc(h)+'</small><br>'+(isCh(h)?CH(r[h]):esc(val(r[h])))+'</div>').join('')+'</div>'+
+  '<div class="bar" style="justify-content:flex-start;margin:12px 0"><button class="g" onclick="openF(\'projects\',\''+id+'\')">✏️ Изменить</button><button class="g" onclick="imp(\''+id+'\')">📥 Импорт позиций</button><button class="g" onclick="addPos(\''+id+'\')">➕ Позиция</button><button class="g" onclick="wiz(\''+id+'\')">🛒 Заказ</button></div>'+relHtml(rel)}
+ catch(e){d.innerHTML='<p class="m">'+esc(e.message)+'</p>'}}
 async function openF(k,id){const e=E[k];await Promise.all(P(e.f+(e.c?';'+e.c:'')).filter(f=>f.t==='r').map(f=>rows(f.a)));
  const r=id?(C[k]||[]).find(x=>x[e.id]===id):(x=>(PRE=null,x))(PRE),F=P(!id&&e.c?e.c:e.f);
  $('#dc').innerHTML='<h3 style="margin-top:0">'+esc(e.n)+(id?' · '+esc(id):'')+'</h3><div id="rel"></div><div class="f">'+F.map(f=>'<label>'+esc(f.l)+inp(f,r?r[f.k]:'',r)+'</label>').join('')+'</div>'+
@@ -176,8 +217,8 @@ async function vHome(){const d=DASH||await api('dashboard'),k=d.kpi,hr=new Date(
  '<div class="card"><b>🕘 Последние действия</b>'+(d.recent.map(r=>'<div class="li"><div>'+esc(r.text)+'<div class="m">'+esc(r.who)+' · '+fd(r.when)+'</div></div></div>').join('')||'<p class="m">Пока пусто</p>')+'</div></div>'}
 
 const RL={contacts:'📇 Контакты',contracts:'📄 Договоры',projects:'📋 Проекты',orders:'🛒 Заказы',positions:'🧩 Позиции проекта',items:'🧾 Позиции',purchases:'📦 Закупки',tasks:'✅ Задачи',journal:'🕘 История'};
-async function relLoad(k,id){try{const r=await api('related',k,id),el=$('#rel');if(!el)return;
- el.innerHTML=Object.keys(RL).filter(x=>r[x]&&r[x].length).map(x=>'<details class="card" style="padding:8px 12px"><summary><b>'+RL[x]+'</b> <span class="chip">'+r[x].length+'</span></summary>'+r[x].map(i=>'<div class="li"><div>'+esc(i[0])+'<div class="m">'+esc(i[1])+'</div></div></div>').join('')+'</details>').join('')}catch(e){}}
+const relHtml=r=>Object.keys(RL).filter(x=>r[x]&&r[x].length).map(x=>'<details class="card" style="padding:8px 12px"'+(x==='positions'||x==='journal'?' open':'')+'><summary><b>'+RL[x]+'</b> <span class="chip">'+r[x].length+'</span></summary>'+r[x].map(i=>'<div class="li"><div>'+esc(i[0])+'<div class="m">'+esc(i[1])+'</div></div></div>').join('')+'</details>').join('');
+async function relLoad(k,id){try{const r=await api('related',k,id),el=$('#rel');if(el)el.innerHTML=relHtml(r)}catch(e){}}
 const PK=['clients','projects','orders','contacts'];
 async function pal(){await Promise.all(PK.map(rows));$('#dc').innerHTML='<input id="pq" placeholder="Поиск по клиентам, проектам, заказам, контактам…" oninput="palr()" style="width:100%"><div id="pr"></div>';dlg.showModal();$('#pq').focus()}
 function palr(){const q=$('#pq').value.toLowerCase(),o=[];if(q.length<2){$('#pr').innerHTML='';return}
@@ -193,11 +234,22 @@ async function wiz(pid,oid){await Promise.all(['projects','pitems','orders'].map
  $('#dc').onchange=e=>{if(e.target.dataset.k==='projectId')wizPos(e.target.value,'')};dlg.showModal();wizPos(pid,oid||'')}
 function wizPos(pid,oid){const mgr=ALLF,used=oid?(C.oitems||[]).filter(i=>i['ID заказа']===oid).map(i=>i['ID позиции проекта']):[];
  const P=(C.pitems||[]).filter(p=>p['ID проекта']===pid&&!used.includes(p['ID позиции'])),fl=(f,ph,v,t)=>'<input '+(t||'type=number step=any')+' placeholder="'+ph+'" data-f="'+f+'" value="'+esc(v)+'">';
- $('#wp').innerHTML=!pid?'<p class="m">Выберите проект.</p>':P.length?P.map(p=>'<div class="card"><label style="display:flex;gap:8px;align-items:center"><input type=checkbox data-w="'+esc(p['ID позиции'])+'" style="width:auto" checked><b>'+esc(p['Номенклатура']||p['ID позиции'])+'</b></label><div class="m">'+esc(p['ID поставщика']||'⚠️ поставщик не указан')+' · в проекте '+esc(p['Объём, кг']||'—')+' кг</div><div class="f" style="grid-template-columns:1fr 1fr">'+fl('q','Кол-во, кг',p['Объём, кг']||'')+fl('pack','Фасовка','','type=text')+(mgr?fl('buy','Цена закупки',''):'')+fl('sell','Цена продажи','')+'</div></div>').join(''):'<p class="m">В проекте нет позиций, которые можно добавить. Сначала добавьте позиции проекта.</p>'}
+ $('#wp').innerHTML=!pid?'<p class="m">Выберите проект.</p>':P.length?P.map(p=>'<div class="card"><label style="display:flex;gap:8px;align-items:center"><input type=checkbox data-w="'+esc(p['ID позиции'])+'" style="width:auto" checked><b>'+esc(PN(p))+'</b></label><div class="m">'+esc(p['ID поставщика']||'⚠️ поставщик не указан')+' · '+[p['Образец'],p['Цены']].filter(Boolean).map(CH).join(' ')+'</div><div class="f" style="grid-template-columns:1fr 1fr">'+fl('q','Кол-во, кг','')+fl('pack','Фасовка','','type=text')+(mgr?fl('buy','Цена закупки',''):'')+fl('sell','Цена продажи','')+'</div></div>').join(''):'<p class="m">В проекте нет позиций, которые можно добавить. Сначала добавьте позиции проекта.</p>'}
 function wizGo(oid){const lines=[],gv=k=>{const x=document.querySelector('#dc [data-k="'+k+'"]');return x?x.value:''};
  document.querySelectorAll('#wp .card').forEach(c=>{const cb=c.querySelector('[data-w]');if(!cb||!cb.checked)return;const g=f=>{const x=c.querySelector('[data-f="'+f+'"]');return x?x.value:''};lines.push({pid:cb.dataset.w,qty:g('q'),pack:g('pack'),buy:g('buy'),sell:g('sell')})});
  run(async()=>{const r=await api('orderBuild',{orderId:oid,projectId:gv('projectId'),terms:gv('terms'),incoterms:gv('incoterms'),lines});if(r.created)page='orders';
   await after((r.created?'Заказ '+r.id+' сформирован':'Позиции добавлены в '+r.id)+' ('+r.count+' поз.)'+(r.warnings&&r.warnings.length?' ⚠️ '+r.warnings.map(w=>w.msg).join('; '):''))})}
+async function imp(pid){await Promise.all(['projects','suppliers'].map(rows));
+ $('#dc').innerHTML='<h3 style="margin-top:0">📥 Импорт позиций в проект</h3><div class="f"><label>Проект'+inp({k:'projectId',t:'r',a:'projects'},pid||'')+'</label><label>Поставщик (для всех загружаемых позиций)'+inp({k:'supplierId',t:'r',a:'suppliers'},'')+'</label>'+
+ '<label>Вставьте список: каждая позиция с новой строки (можно копировать из Excel, Google Таблиц, прайса)<textarea id="ipt" rows=8 oninput="impP()" placeholder="Наименование образца 1&#10;Наименование образца 2"></textarea></label>'+
+ '<label>Столбец с наименованием<select id="ipc" onchange="impP()"><option value="1">1-й</option><option value="2">2-й</option><option value="3">3-й</option><option value="4">4-й</option></select></label>'+
+ '<label style="display:flex;gap:8px;align-items:center"><input type=checkbox id="ipn" checked style="width:auto" onchange="impP()"> Остальные столбцы записать в примечание</label></div><div id="ipv" class="m" style="margin-top:8px"></div>'+
+ '<div class="bar" style="margin-top:14px"><button class="g" onclick="dlg.close()">Отмена</button><button onclick="impGo()">Загрузить</button></div>';
+ $('#dc').onchange=null;dlg.showModal()}
+function impRows(){const c=Number($('#ipc').value)-1,nt=$('#ipn').checked;return $('#ipt').value.split(/\r?\n/).map(l=>l.split('\t')).filter(a=>a.some(x=>x.trim())).map(a=>({nm:(a[c]||'').trim(),note:nt?a.filter((x,i)=>i!==c&&x.trim()).map(x=>x.trim()).join(' | '):''})).filter(x=>x.nm)}
+function impP(){const R=impRows();$('#ipv').innerHTML=R.length?'<b>Будет создано позиций: '+R.length+'</b><br>'+R.slice(0,5).map(x=>'• '+esc(x.nm)+(x.note?' <span class="m">('+esc(x.note.slice(0,40))+')</span>':'')).join('<br>')+(R.length>5?'<br>…':''):''}
+function impGo(){const R=impRows(),gv=k=>document.querySelector('#dc [data-k="'+k+'"]').value;if(!R.length)return toast('Вставьте список позиций');
+ run(async()=>{const r=await api('pitemsImport',{projectId:gv('projectId'),supplierId:gv('supplierId'),names:R.map(x=>x.nm),notes:R.map(x=>x.note)});page='pitems';await after('Добавлено позиций: '+r.count)})}
 function vDay(){
   const T=D.tasks.slice().sort((a,b)=>String(a['Срок']||'9').localeCompare(String(b['Срок']||'9')));
   const g=t=>!t['Срок']?2:t['Срок']<D.today?0:t['Срок']===D.today?1:2,N=['🔴 Просрочено','🟠 Сегодня','🗓 Далее'];
